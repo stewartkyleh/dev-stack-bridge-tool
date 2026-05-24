@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
     if (event.type === 'user.created') {
       console.log('Creating user:', event.data.id);
-      
+
       const primaryEmail = event.data.email_addresses.find(
         (e) => e.id === event.data.primary_email_address_id
       );
@@ -20,12 +20,19 @@ export async function POST(req: NextRequest) {
         return new Response('No primary email on user.created', { status: 400 });
       }
 
-      await db.user.create({
-        data: {
-          id: event.data.id,
-          email: primaryEmail.email_address,
-        },
-      });
+      try {
+        await db.user.upsert({
+          where: { id: event.data.id },
+          create: {
+            id: event.data.id,
+            email: primaryEmail.email_address,
+          },
+          update: {},
+        });
+      } catch (dbError) {
+        console.error('Database write failed:', dbError);
+        return new Response('Internal error', { status: 500 });
+      }
     }
 
     return new Response('OK', { status: 200 });
