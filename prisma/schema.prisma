@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id              // Clerk user ID (no @default — set on webhook create)
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transitions Transition[]
+
+  @@map("users")
+}
+
+model Transition {
+  id String @id @default(cuid())
+
+  // Ownership: exactly one of these is non-null (CHECK constraint in migration)
+  userId             String?
+  anonymousSessionId String?
+  user               User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ── User intake (Stage 1 form) ──────────────────────────────
+  currentSkills      String[] // chips + free-text additions merged
+  yearsProfessional  String   // "0-1" | "2-4" | "5-9" | "10+"
+  targetRole         String   // see intake-design.md for enum
+  stackPreference    String   // "user_specified" | "market_recommended"
+  targetStack        String[] // max 4, mutex-validated upstream
+  timelineWeeks      Int      // 3 | 6 | 9 | 12
+  hoursPerWeek       String   // "5-10" | "10-20" | "20+"
+
+  // ── LLM output (display-only, JSONB) ────────────────────────
+  summary             Json
+  timeline            Json
+  stackRecommendation Json
+  skillBridge         Json
+  newConcepts         Json
+  projectInspirations Json
+  rawLlmOutput        String  @db.Text
+
+  // ── Derived plan ────────────────────────────────────────────
+  project Project?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([anonymousSessionId])
+  @@map("transitions")
+}
+
+model Project {
+  id           String     @id @default(cuid())
+  transitionId String     @unique
+  transition   Transition @relation(fields: [transitionId], references: [id], onDelete: Cascade)
+
+  // ── User intake (Stage 2 form) ──────────────────────────────
+  projectDescription   String  @db.Text
+  specificRequirements String? @db.Text
+
+  // ── LLM output (display-only, JSONB) ────────────────────────
+  fitEvaluation    Json
+  stackForProject  Json
+  definitionOfDone Json
+  rawLlmOutput     String  @db.Text
+
+  // ── Normalized actionable content ───────────────────────────
+  phases Phase[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("projects")
+}
+
+model Phase {
+  id        String  @id @default(cuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  order            Int
+  name             String
+  weekRange        String   // e.g., "Week 1–3"
+  goal             String   @db.Text
+  learningCallouts String[]
+
+  milestones Milestone[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, order])
+  @@index([projectId, order])
+  @@map("phases")
+}
+
+model Milestone {
+  id      String @id @default(cuid())
+  phaseId String
+  phase   Phase  @relation(fields: [phaseId], references: [id], onDelete: Cascade)
+
+  order Int
+  title String
+
+  tasks Task[]
+
+  createdAt DateTime @default(now())
+
+  @@unique([phaseId, order])
+  @@index([phaseId, order])
+  @@map("milestones")
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  milestoneId String
+  milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  order       Int
+  title       String
+  description String?   @db.Text
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([milestoneId, order])
+  @@index([milestoneId, order])
+  @@map("tasks")
+}
