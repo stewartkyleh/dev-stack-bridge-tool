@@ -1,9 +1,10 @@
 import { Webhook } from 'svix';
 import { headers } from 'next/headers';
 import type { WebhookEvent } from '@clerk/nextjs/server';
-import { db } from '@/app/lib/db';
+import { db } from '@/app/lib/prismaSingleton';
 
 export async function POST(req: Request) {
+  console.log('Webhook received:', req.method, req.url);
   const secret = process.env.CLERK_WEBHOOK_SECRET;
   if (!secret) throw new Error('CLERK_WEBHOOK_SECRET is not set');
 
@@ -29,7 +30,9 @@ export async function POST(req: Request) {
     return new Response('Invalid signature', { status: 401 });
   }
 
+  console.log('Event type:', event.type);
   if (event.type === 'user.created') {
+    console.log('Creating user:', event.data.id);
     const primaryEmail = event.data.email_addresses.find(
       (e) => e.id === event.data.primary_email_address_id
     );
