@@ -5,8 +5,8 @@ import { db } from '@/app/lib/prismaSingleton';
 
 export async function POST(req: Request) {
   console.log('Webhook received:', req.method, req.url);
-  const secret = process.env.CLERK_WEBHOOK_SECRET;
-  if (!secret) throw new Error('CLERK_WEBHOOK_SECRET is not set');
+  const secret = process.env.CLERK_WEBHOOK_SIGNING_SECRET;
+  if (!secret) throw new Error('CLERK_WEBHOOK_SIGNING_SECRET is not set');
 
   const headerPayload = await headers();
   const svixId = headerPayload.get('svix-id');
