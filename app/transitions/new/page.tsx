@@ -286,7 +286,7 @@ function Step2({ form }: { form: UseFormReturn<Stage1FormData> }) {
       />
 
       {/* Target stack — conditional */}
-      {stackPreference === "specific" && <TargetStackPicker form={form} />}
+      {stackPreference === "user_specified" && <TargetStackPicker form={form} />}
     </div>
   );
 }
@@ -485,7 +485,7 @@ function Step4({ form }: { form: UseFormReturn<Stage1FormData> }) {
         </div>
         <div>
           <span className="font-medium">Stack: </span>
-          {values.stackPreference === "recommend"
+          {values.stackPreference === "market_recommended"
             ? "Market recommendation"
             : values.targetStack?.join(", ")}
         </div>

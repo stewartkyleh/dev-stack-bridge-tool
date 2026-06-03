@@ -33,7 +33,7 @@ model Transition {
 
   // ── User intake (Stage 1 form) ──────────────────────────────
   currentSkills      String[] // chips + free-text additions merged
-  yearsProfessional  String   // "0-1" | "2-4" | "5-9" | "10+"
+  yearsExperience    String   // "0-1" | "2-4" | "5-9" | "10+"
   targetRole         String   // see intake-design.md for enum
   stackPreference    String   // "user_specified" | "market_recommended"
   targetStack        String[] // max 4, mutex-validated upstream

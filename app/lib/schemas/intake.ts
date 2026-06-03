@@ -22,8 +22,8 @@ export const stage1FormSchema = z.object({
 
   // enum — drives conditional visibility of targetStack
   stackPreference: z.enum([
-    "specific",
-    "recommend",
+    "user_specified",
+    "market_recommended",
   ], {
     error: () => ({ message: "Required" }),
   }),
@@ -40,7 +40,7 @@ export const stage1FormSchema = z.object({
     error: () => ({ message: "Required" }),
   }),
 }).superRefine((data, ctx) => {
-  if (data.stackPreference === "specific") {
+  if (data.stackPreference === "user_specified") {
     if (!data.targetStack || data.targetStack.length < 2) {
       ctx.addIssue({
         code: "custom",
