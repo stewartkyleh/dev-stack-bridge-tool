@@ -24,7 +24,7 @@ model User {
 }
 
 model Transition {
-  id String @id @default(cuid())
+  id String @id @default(uuid())
 
   // Ownership: exactly one of these is non-null (CHECK constraint in migration)
   userId             String?
@@ -61,7 +61,7 @@ model Transition {
 }
 
 model Project {
-  id           String     @id @default(cuid())
+  id           String     @id @default(uuid())
   transitionId String     @unique
   transition   Transition @relation(fields: [transitionId], references: [id], onDelete: Cascade)
 
@@ -85,7 +85,7 @@ model Project {
 }
 
 model Phase {
-  id        String  @id @default(cuid())
+  id        String  @id @default(uuid())
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
@@ -105,7 +105,7 @@ model Phase {
 }
 
 model Milestone {
-  id      String @id @default(cuid())
+  id      String @id @default(uuid())
   phaseId String
   phase   Phase  @relation(fields: [phaseId], references: [id], onDelete: Cascade)
 
@@ -122,7 +122,7 @@ model Milestone {
 }
 
 model Task {
-  id          String    @id @default(cuid())
+  id          String    @id @default(uuid())
   milestoneId String
   milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
 
