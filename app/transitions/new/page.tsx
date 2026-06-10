@@ -7,10 +7,16 @@ import { Field, FieldLabel, FieldError} from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { stage1FormSchema, type Stage1FormData } from "@/app/lib/schemas/intake";
+import { useRouter } from "next/navigation";
+import { useTransitionStream, StreamState } from "@/app/lib/hooks/useTransitionStream";
 
 const STEPS = ["Your background", "Where you're going", "Your capacity", "Review"];
 
 export default function NewTransitionPage() {
+  const router = useRouter();
+  const { state, start } = useTransitionStream();
+  const isStreaming = state.status === "streaming" || state.status === "complete";
+
   const [step, setStep] = useState(0);
 
   const form = useForm<Stage1FormData>({
@@ -61,9 +67,13 @@ export default function NewTransitionPage() {
   }
 
   function onSubmit(data: Stage1FormData) {
-    console.log(data); // Milestone 2 wires this up
+    localStorage.removeItem(DRAFT_KEY);
+    start(data);
   }
 
+  if (isStreaming) {
+    return <StreamingView state={state} onComplete={(id) => router.push(`/transitions/${id}`)} />;
+  }
   return (
     <div>
       {/* Progress indicator */}
@@ -268,13 +278,13 @@ function Step2({ form }: { form: UseFormReturn<Stage1FormData> }) {
               aria-invalid={fieldState.invalid}
             >
               <Field orientation="horizontal">
-                <RadioGroupItem value="specific" id="pref-specific" />
+                <RadioGroupItem value="user_specified" id="pref-specific" />
                 <FieldLabel htmlFor="pref-specific" className="font-normal">
                   I have specific tools in mind
                 </FieldLabel>
               </Field>
               <Field orientation="horizontal">
-                <RadioGroupItem value="recommend" id="pref-recommend" />
+                <RadioGroupItem value="market_recommended" id="pref-recommend" />
                 <FieldLabel htmlFor="pref-recommend" className="font-normal">
                   Recommend based on current job market
                 </FieldLabel>
@@ -498,6 +508,99 @@ function Step4({ form }: { form: UseFormReturn<Stage1FormData> }) {
           {values.hoursPerWeek}
         </div>
       </div>
+    </div>
+  );
+}
+
+function StreamingView({
+  state,
+  onComplete,
+}: {
+  state: StreamState;
+  onComplete: (transitionId: string) => void;
+}) {
+  useEffect(() => {
+    if (state.status === "complete") {
+      onComplete(state.transitionId);
+    }
+  }, [state.status]);
+
+  const parsed = state.status === "streaming" ? state.parsed : {};
+
+  return (
+    <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-xl font-semibold">Building your bridge analysis</h1>
+        <p className="text-sm text-muted-foreground">
+          {state.status === "complete" ? "Done — redirecting…" : "Generating…"}
+        </p>
+      </div>
+
+      {/* Sections render as they arrive. Polished layout is Milestone 3, Task 3. */}
+      {parsed.summary && (
+        <section className="rounded-lg border p-4 space-y-1">
+          <h2 className="font-medium">Summary</h2>
+          <p className="text-sm font-semibold">{parsed.summary.headline}</p>
+          <p className="text-sm text-muted-foreground">{parsed.summary.currentPosition}</p>
+          <p className="text-sm text-muted-foreground">{parsed.summary.destination}</p>
+        </section>
+      )}
+
+      {parsed.timeline && (
+        <section className="rounded-lg border p-4 space-y-1">
+          <h2 className="font-medium">Timeline</h2>
+          <p className="text-sm">
+            <span className="capitalize">{parsed.timeline.verdict?.replace(/_/g, " ")}</span>
+            {" — "}
+            {parsed.timeline.reasoning}
+          </p>
+        </section>
+      )}
+
+      {parsed.stackRecommendation && (
+        <section className="rounded-lg border p-4 space-y-1">
+          <h2 className="font-medium">Recommended stack</h2>
+          <p className="text-sm">{parsed.stackRecommendation.stack?.join(", ")}</p>
+        </section>
+      )}
+
+      {parsed.skillBridge && parsed.skillBridge.length > 0 && (
+        <section className="rounded-lg border p-4 space-y-2">
+          <h2 className="font-medium">Skill bridge</h2>
+          {parsed.skillBridge.map((item, i) => (
+            <div key={i} className="text-sm">
+              <span className="font-medium">{item.currentConcept}</span>
+              {" → "}
+              <span>{item.targetConcept}</span>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {parsed.newConcepts && parsed.newConcepts.length > 0 && (
+        <section className="rounded-lg border p-4 space-y-2">
+          <h2 className="font-medium">New territory</h2>
+          {parsed.newConcepts.map((item, i) => (
+            <div key={i} className="text-sm">
+              <span className="font-medium">{item.concept}</span>
+              <span className="text-muted-foreground ml-2">{item.importance}</span>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {parsed.projectInspirations && parsed.projectInspirations.length > 0 && (
+        <section className="rounded-lg border p-4 space-y-2">
+          <h2 className="font-medium">Project patterns</h2>
+          {parsed.projectInspirations.map((item, i) => (
+            <div key={i} className="text-sm">{item.pattern}</div>
+          ))}
+        </section>
+      )}
+
+      {state.status === "error" && (
+        <p className="text-sm text-destructive">{state.message}</p>
+      )}
     </div>
   );
 }
