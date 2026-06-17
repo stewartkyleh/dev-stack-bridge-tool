@@ -9,13 +9,15 @@ import { Button } from "@/components/ui/button";
 import { stage1FormSchema, type Stage1FormData } from "@/app/lib/schemas/intake";
 import { useRouter } from "next/navigation";
 import { useTransitionStream, StreamState } from "@/app/lib/hooks/useTransitionStream";
+import { shouldClearDraft } from "@/app/lib/streamState";
 
 const STEPS = ["Your background", "Where you're going", "Your capacity", "Review"];
+const DRAFT_KEY = "intake.stage1.draft";
 
 export default function NewTransitionPage() {
   const router = useRouter();
   const { state, start } = useTransitionStream();
-  const isStreaming = state.status === "streaming" || state.status === "complete";
+  const inFlight = state.status !== "idle";
 
   const [step, setStep] = useState(0);
 
@@ -31,8 +33,6 @@ export default function NewTransitionPage() {
       hoursPerWeek: "" as Stage1FormData["hoursPerWeek"],
     },
   });
-
-  const DRAFT_KEY = "intake.stage1.draft";
 
   // Restore draft on mount
   useEffect(() => {
@@ -54,6 +54,14 @@ export default function NewTransitionPage() {
     return () => subscription.unsubscribe();
   }, [form]);
 
+  // Clear the draft only once persistence is confirmed (`ready`) — never at
+  // submit. A failed generation keeps the user's intake answers for a retry.
+  useEffect(() => {
+    if (shouldClearDraft(state)) {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+  }, [state]);
+
   async function advanceStep() {
     // fields to validate for each step before advancing
     const stepFields: (keyof Stage1FormData)[][] = [
@@ -67,12 +75,17 @@ export default function NewTransitionPage() {
   }
 
   function onSubmit(data: Stage1FormData) {
-    localStorage.removeItem(DRAFT_KEY);
     start(data);
   }
 
-  if (isStreaming) {
-    return <StreamingView state={state} onComplete={(id) => router.push(`/transitions/${id}`)} />;
+  if (inFlight) {
+    return (
+      <StreamingView
+        state={state}
+        onView={(id) => router.push(`/transitions/${id}`)}
+        onRegenerate={() => start(form.getValues())}
+      />
+    );
   }
   return (
     <div>
@@ -512,28 +525,32 @@ function Step4({ form }: { form: UseFormReturn<Stage1FormData> }) {
   );
 }
 
+const SUBTITLE: Record<Exclude<StreamState["status"], "idle">, string> = {
+  streaming: "Generating…",
+  confirming: "Finishing up — saving your analysis…",
+  ready: "Your analysis is ready.",
+  failed: "Something went wrong.",
+};
+
 function StreamingView({
   state,
-  onComplete,
+  onView,
+  onRegenerate,
 }: {
   state: StreamState;
-  onComplete: (transitionId: string) => void;
+  onView: (transitionId: string) => void;
+  onRegenerate: () => void;
 }) {
-  useEffect(() => {
-    if (state.status === "complete") {
-      onComplete(state.transitionId);
-    }
-  }, [state.status]);
-
-  const parsed = state.status === "streaming" ? state.parsed : {};
+  // Navigation happens only on an explicit click below — never automatically —
+  // so the user can finish reading the streamed preview at their own pace.
+  const parsed = "parsed" in state ? state.parsed : {};
+  const subtitle = state.status === "idle" ? "" : SUBTITLE[state.status];
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12 space-y-6">
       <div className="space-y-1">
         <h1 className="text-xl font-semibold">Building your bridge analysis</h1>
-        <p className="text-sm text-muted-foreground">
-          {state.status === "complete" ? "Done — redirecting…" : "Generating…"}
-        </p>
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
       </div>
 
       {/* Sections render as they arrive. Polished layout is Milestone 3, Task 3. */}
@@ -598,8 +615,36 @@ function StreamingView({
         </section>
       )}
 
-      {state.status === "error" && (
-        <p className="text-sm text-destructive">{state.message}</p>
+      {/* Action area — advance only on an explicit click. */}
+      {state.status === "confirming" && (
+        <div className="flex items-center gap-3 pt-2">
+          <span className="text-sm text-muted-foreground animate-pulse">
+            Still finalizing…
+          </span>
+          <Button type="button" disabled>
+            View your bridge analysis
+          </Button>
+        </div>
+      )}
+
+      {state.status === "ready" && (
+        <div className="pt-2">
+          <Button type="button" onClick={() => onView(state.transitionId)}>
+            View your bridge analysis →
+          </Button>
+        </div>
+      )}
+
+      {state.status === "failed" && (
+        <div className="space-y-3 pt-2">
+          <p className="text-sm text-destructive">{state.message}</p>
+          <p className="text-sm text-muted-foreground">
+            Your intake answers are saved — you can regenerate.
+          </p>
+          <Button type="button" onClick={onRegenerate}>
+            Regenerate
+          </Button>
+        </div>
       )}
     </div>
   );
