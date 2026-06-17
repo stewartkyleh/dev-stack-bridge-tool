@@ -143,25 +143,25 @@ Chips are non-exclusive. Free-text entries are stored alongside chip selections 
 
 ### Stage 1 layout
 
-Single scrolling page with grouped sections:
+A 4-step wizard (`app/transitions/new/page.tsx`), one field group per step, with a segmented
+progress strip across the top and Back / Next navigation. Each step validates its own fields
+(`form.trigger`) before advancing; the final step is a read-only review before submit.
 
 ```
-[Header: "Tell us about you"]
+Step 1 — "Your background"
   1. Current skills          (chips + free text)
   2. Years professional      (radio group)
 
-[Header: "Where you're going"]
+Step 2 — "Where you're going"
   3. Target role             (radio group)
   4. Stack preference        (segmented toggle)
   5. Target stack            (conditional, mutex multi-select)
 
-[Header: "Your capacity"]
+Step 3 — "Your capacity"
   6. Timeline + Hours        (two radio groups, inline)
 
-[Submit: "Generate my analysis"]
+Step 4 — "Review"           (summary of entries; [Submit: "Generate my analysis"])
 ```
-
-A thin progress strip at the top reflects completion. Submit is disabled until all required fields are valid.
 
 ---
 
@@ -256,14 +256,8 @@ This is per-browser, not per-account. A user signing in on a different device wo
 
 ## Anonymous user notes
 
-For anonymous users (Stage 1 only — Stage 2 requires being signed in, OR — see below):
+Anonymous use is **Stage 1 only** — Stage 2 requires an account (D-029). For anonymous users:
 
-- The form behaves identically. The submit fires against `/api/transitions/generate` and the resulting transition is saved with `anonymousSessionId`, not `userId`.
+- The Stage 1 form behaves identically. Submit fires against `/api/transitions/generate` and the resulting transition is saved with `anonymousSessionId`, not `userId`.
 - A persistent banner on the result page reads: *"Save this analysis to your account — it's free and takes 10 seconds."* Click triggers the Clerk sign-up flow; on completion, the anonymous transition is claimed.
-
-**Open question for build**: do anonymous users get access to Stage 2 too, or only after sign-up? Two reasonable answers:
-
-1. **Sign-up gate at Stage 2.** Encourages account creation at the point of highest engagement; reduces anonymous abuse cost (Stage 2 is the more expensive LLM call).
-2. **Stage 2 also anonymous, claimed together.** Lower friction, better demo experience for hiring reviewers who land on the site and want to see the full flow.
-
-**Resolved (D-029):** Stage 2 requires an account in v1 — anonymous use is Stage 1 only. The reviewer "see the full flow" need is met by the sample-plan landing (stretch goal), not by opening Stage 2 to anonymous use. The Stage 2 entry point shows a contextual sign-up prompt rather than a bare auth redirect.
+- The Stage 2 entry point shows a contextual sign-up prompt rather than a bare auth redirect. The reviewer "see the full flow" need is met by the sample-plan landing (stretch goal), not by opening Stage 2 to anonymous use.

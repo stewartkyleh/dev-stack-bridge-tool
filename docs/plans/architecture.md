@@ -110,7 +110,7 @@ Pages map to the App Router's file structure: `app/transitions/[id]/page.tsx`, `
 
 Clerk handles all auth UI and session management. Integration points:
 
-**Session resolution.** Every server-side code path uses Clerk's `auth()` helper to get the current user; Client Components use `useUser()`. Middleware (`middleware.ts`) enforces auth on protected paths — unauthenticated requests to those paths redirect to `/sign-in`.
+**Session resolution.** Every server-side code path uses Clerk's `auth()` helper to get the current user; Client Components use `useUser()`. Middleware (`proxy.ts`) enforces auth on protected paths — unauthenticated requests to those paths redirect to `/sign-in`.
 
 **User row creation.** On first sign-in, Clerk fires a `user.created` webhook to `/api/webhooks/clerk`. The handler creates a corresponding `User` row in Postgres keyed by the Clerk user ID. All app queries reference this row.
 
@@ -148,12 +148,9 @@ Both generate routes follow the same pattern:
 6. On stream completion: parse JSON, validate with Zod, write to Postgres.
 7. On parse/validation failure: log raw output server-side for prompt debugging, return 422 to the client with a "regenerate" affordance.
 
-**A subtlety about streaming structured JSON.** The model's response is JSON, not prose, so streaming raw tokens to the user produces unreadable output (`{"summary": {"headline": "..."`). Two viable approaches:
+**A subtlety about streaming structured JSON.** The model's response is JSON, not prose, so streaming raw tokens to the user produces unreadable output (`{"summary": {"headline": "..."`). **Decided and shipped (D-023): incremental JSON parsing.** A `partial-json` library extracts complete sections as they arrive, rendering the UI progressively — the `summary` section appears, then `timeline`, then `skillBridge` items one at a time. (The alternative considered, a plain 10–30s loading spinner with no streaming, was rejected as worse UX and kept only as a mental fallback.)
 
-- **Incremental JSON parsing.** Use a partial-JSON library (e.g., `partial-json`) to extract complete sections as they arrive. Render the UI progressively: the `summary` section appears, then `timeline`, then `skillBridge` items one at a time. This is the better UX and the MVP target.
-- **Loading state, no streaming.** Show a polished loading state for 10–30 seconds. Simpler, but feels slow. Acceptable fallback if incremental parsing causes issues during build.
-
-The client uses the AI SDK's streaming hooks to subscribe; the rendering strategy (incremental sections vs. spinner) lives in the Client Component.
+The client subscribes via a custom fetch hook (`app/lib/hooks/useTransitionStream.ts`), not the AI SDK's `useCompletion` — see D-023 for why. The rendering strategy lives in that Client Component.
 
 ## Environment variables
 
