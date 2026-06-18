@@ -52,3 +52,16 @@ export const stage1FormSchema = z.object({
 });
 
 export type Stage1FormData = z.infer<typeof stage1FormSchema>;
+
+// Stage 2 intake — the project description the plan is generated from. The
+// 50-char floor keeps a one-line idea from producing a vague plan;
+// specificRequirements is an optional free-text nudge (constraints, must-use
+// tools) the user can omit entirely.
+export const projectIntakeSchema = z.object({
+  projectDescription: z
+    .string()
+    .min(50, "Describe your project in at least 50 characters"),
+  specificRequirements: z.string().optional(),
+});
+
+export type ProjectIntake = z.infer<typeof projectIntakeSchema>;
