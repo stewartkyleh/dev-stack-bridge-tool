@@ -7,6 +7,7 @@ import { Field, FieldLabel, FieldError} from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { stage1FormSchema, type Stage1FormData } from "@/app/lib/schemas/intake";
+import { STACK_GROUPS, STACK_CAP, toggleTool } from "@/app/lib/stackPicker";
 import { useRouter } from "next/navigation";
 import { useTransitionStream, StreamState } from "@/app/lib/hooks/useTransitionStream";
 import { shouldClearDraft } from "@/app/lib/streamState";
@@ -299,7 +300,7 @@ function Step2({ form }: { form: UseFormReturn<Stage1FormData> }) {
               <Field orientation="horizontal">
                 <RadioGroupItem value="market_recommended" id="pref-recommend" />
                 <FieldLabel htmlFor="pref-recommend" className="font-normal">
-                  Recommend based on current job market
+                  Suggest a proven stack for this role
                 </FieldLabel>
               </Field>
             </RadioGroup>
@@ -314,32 +315,13 @@ function Step2({ form }: { form: UseFormReturn<Stage1FormData> }) {
   );
 }
 
-const MUTEX_GROUPS = {
-  Language: ["Python", "TypeScript", "JavaScript", "Go"],
-  "Web framework": ["React", "Vue", "Next.js", "Remix", "Svelte", "Angular"],
-  Backend: ["Express", "FastAPI", "Django", "NestJS", "Flask"],
-  Database: ["Postgres", "MySQL", "MongoDB", "DynamoDB", "SQLite"],
-  "Cloud / hosting": ["AWS", "GCP", "Azure", "Vercel"],
-};
-
-const NON_MUTEX = ["Tailwind", "Docker", "GraphQL", "Redis", "Kubernetes"];
-
 function TargetStackPicker({ form }: { form: UseFormReturn<Stage1FormData> }) {
   const selected = form.watch("targetStack") ?? [];
 
-  function toggle(tool: string, isMutex: boolean, groupTools?: string[]) {
-    let next: string[];
-    if (selected.includes(tool)) {
-      next = selected.filter((s) => s !== tool);
-    } else if (selected.length >= 4) {
-      return; // cap at 4
-    } else if (isMutex && groupTools) {
-      // remove any other selection from the same mutex group, then add
-      next = [...selected.filter((s) => !groupTools.includes(s)), tool];
-    } else {
-      next = [...selected, tool];
-    }
-    form.setValue("targetStack", next, { shouldValidate: true });
+  function toggle(value: string) {
+    // Selection logic (mutex exclusion, cap-at-4, name-only storage) lives in
+    // the pure stackPicker module so it can be unit-tested without rendering.
+    form.setValue("targetStack", toggleTool(selected, value), { shouldValidate: true });
   }
 
   return (
@@ -351,63 +333,47 @@ function TargetStackPicker({ form }: { form: UseFormReturn<Stage1FormData> }) {
           <FieldLabel>
             Pick the tools you want to learn. We'll fill in the supporting pieces. *{" "}
             <span className="font-normal text-muted-foreground">
-              Selected: {selected.length} / 4
+              Selected: {selected.length} / {STACK_CAP}
             </span>
           </FieldLabel>
 
           <div className="space-y-4">
-            {Object.entries(MUTEX_GROUPS).map(([group, tools]) => (
-              <div key={group}>
-                <p className="text-xs font-medium text-muted-foreground mb-2">{group}</p>
-                <div className="flex flex-wrap gap-2">
-                  {tools.map((tool) => {
-                    const isSelected = selected.includes(tool);
-                    const groupHasSelection = tools.some((t) => selected.includes(t));
-                    const isDisabled = !isSelected && groupHasSelection;
-                    return (
-                      <button
-                        key={tool}
-                        type="button"
-                        disabled={isDisabled || (!isSelected && selected.length >= 4)}
-                        onClick={() => toggle(tool, true, tools)}
-                        title={isDisabled ? `${group} — pick the one you're seeing in job listings you're targeting` : undefined}
-                        className={`px-3 py-1 rounded-full text-sm border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                          isSelected
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background border-border hover:border-primary"
-                        }`}
-                      >
-                        {tool}
-                      </button>
-                    );
-                  })}
+            {STACK_GROUPS.map((group) => {
+              const groupHasSelection =
+                group.mutex && group.chips.some((c) => selected.includes(c.value));
+              return (
+                <div key={group.name}>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">{group.name}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {group.chips.map((chip) => {
+                      const isSelected = selected.includes(chip.value);
+                      const mutexBlocked = group.mutex && !isSelected && groupHasSelection;
+                      const capBlocked = !isSelected && selected.length >= STACK_CAP;
+                      return (
+                        <button
+                          key={chip.value}
+                          type="button"
+                          disabled={mutexBlocked || capBlocked}
+                          onClick={() => toggle(chip.value)}
+                          title={
+                            mutexBlocked
+                              ? `${group.name} — pick the one you're seeing in job listings you're targeting`
+                              : undefined
+                          }
+                          className={`px-3 py-1 rounded-full text-sm border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                            isSelected
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "bg-background border-border hover:border-primary"
+                          }`}
+                        >
+                          {chip.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">Additional tools (pick up to 2)</p>
-              <div className="flex flex-wrap gap-2">
-                {NON_MUTEX.map((tool) => {
-                  const isSelected = selected.includes(tool);
-                  return (
-                    <button
-                      key={tool}
-                      type="button"
-                      disabled={!isSelected && selected.length >= 4}
-                      onClick={() => toggle(tool, false)}
-                      className={`px-3 py-1 rounded-full text-sm border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                        isSelected
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-background border-border hover:border-primary"
-                      }`}
-                    >
-                      {tool}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+              );
+            })}
           </div>
 
           {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

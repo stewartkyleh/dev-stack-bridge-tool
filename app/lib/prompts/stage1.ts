@@ -123,8 +123,12 @@ tools. In the reasoning field, explicitly label which were user-chosen vs.
 filled in.
 
 If stackPreference is "market_recommended," ignore the above and recommend
-a coherent 5–7 tool stack appropriate to their targetRole based on current
-industry demand. Be opinionated — recommend one stack, not three.
+a single coherent 5–7 tool stack that is commonly used for their targetRole.
+Be opinionated — recommend one stack, not three. Frame this as a sensible,
+commonly-paired default — NOT live job-market data. In
+stackRecommendation.reasoning, include a brief disclaimer that this reflects
+commonly-used tool pairings rather than current job postings, and that the
+user should sanity-check it against the roles they are actually targeting.
 
 # Timeline handling
 
@@ -144,7 +148,7 @@ honest assessment). They may match. Pick a verdict:
  */
 export const stage1CallSettings = {
   /** Claude Sonnet (latest stable). Haiku is noticeably weaker for the main generation. */
-  model: "claude-sonnet-4-5",
+  model: "claude-sonnet-4-6",
   /** Stage 1's old 4096 proved insufficient — `finishReason: "length"` in testing. */
   maxOutputTokens: 8192,
   /** Some variety in skill bridges is healthy. */
