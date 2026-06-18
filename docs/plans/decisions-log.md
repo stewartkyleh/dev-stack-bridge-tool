@@ -376,6 +376,42 @@ Each entry: the decision, alternatives considered, what drove the call, and a ro
 
 ---
 
+## D-032: Stage 2 streaming client — fork, don't generalize
+
+**Decision**: Stage 2 gets its own streaming client — a `useProjectStream` hook and a `projectStreamState` reducer that copy the Stage 1 lifecycle (`idle → streaming → confirming → ready → failed`) typed to `Partial<ProjectOutput>` — rather than generalizing the existing Stage 1 machinery into a shared, parameterized hook.
+
+**Alternatives**: A generic `StreamState<T>` + `useGenerationStream<T>(endpoint, confirmUrl)` shared across both stages.
+
+**Rationale**: Two call sites don't justify the abstraction, and the navigation models genuinely differ. Stage 1 redirects to `/transitions/[id]`, keyed by a *pre-generated* Transition id that must come back via an `X-Transition-Id` response header. Stage 2 redirects to `/transitions/[id]/plan`, keyed by the *already-known* Transition id — the new Project id is irrelevant to routing, so no header is involved. Folding both into one signature would have to absorb the header-vs-known-URL difference, muddying the shared type for no real payoff. Two simple hooks read more clearly — for a learner and in an interview — than one clever one. The reducer shape is copied (familiar), not shared.
+
+**Reversal cost**: Low. If a third streaming flow appears, the two reducers are nearly identical and can be lifted into a generic then.
+
+---
+
+## D-033: Stage 2 plan persistence — derive `order` and `completed`, don't put them in the LLM contract
+
+**Decision**: `order` and `completed` are removed from `projectOutputSchema`. The model emits phases/milestones/tasks as ordered arrays only; the DB `order` is assigned from a 1-based array index at persist time, and `completed` is owned by Prisma's `@default(false)`.
+
+**Alternatives**: Keep the model emitting an explicit `order` int per row (the original schema) and a `completed: false` literal per task.
+
+**Rationale**: Array position already conveys order unambiguously, so a model-emitted `order` is redundant — and dangerous: a duplicated or skipped number across the `@@unique([parentId, order])` constraints throws `P2002` and fails the *entire* nested write, turning a cosmetic numbering glitch into a forced regeneration. Deriving from index makes the constraint impossible to violate. `completed: false` on every task is pure token waste for a value the DB already defaults — and Stage 2 produces the most rows of any output, pushing against the 8192 `maxOutputTokens` cap. Principle: the LLM output schema carries only what the model actually decides; positional and state fields are derived at persist. The prompt's embedded JSON schema regenerates from the Zod source automatically (D-030), so the contract the model sees stays in lockstep.
+
+**Reversal cost**: Low. Re-add the fields to the Zod schema; the generated prompt schema follows.
+
+---
+
+## D-034: One Project per Transition — block a second plan via 409, don't regenerate
+
+**Decision**: With `Project.transitionId` `@unique` (at most one plan per Transition), a second plan attempt is blocked rather than regenerated. `/transitions/[id]/plan/new` redirects to `/transitions/[id]/plan` when a Project already exists; the generate route short-circuits with **409** *before* calling Claude. The client treats 409 as "plan already exists" and navigates to the plan instead of erroring.
+
+**Alternatives**: Delete-and-recreate on resubmit (full-plan regeneration); a per-phase regeneration flow.
+
+**Rationale**: Regeneration — full or per-phase — is explicitly a stretch goal, not MVP, so blocking is the honest MVP behavior. Guarding at both the page (redirect) and the route (409 before the token spend) keeps the expensive call from firing needlessly. The 409→navigate path also absorbs the D-025 edge where the confirm poll failed but the row actually persisted and the user retried: the retry lands them on their real plan rather than a duplicate-write error.
+
+**Reversal cost**: Low. Adding regeneration later is additive — swap the 409 guard for a delete-then-create (hard delete cascades per D-017) or a per-phase mutation.
+
+---
+
 ## How to add new entries
 
 When you make a meaningful build-time decision:
