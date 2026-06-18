@@ -5,7 +5,7 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { stage1FormSchema } from "@/app/lib/schemas/intake";
 import { transitionOutputSchema } from "@/app/lib/schemas/transitionOutput";
 import { stage1SystemPrompt, stage1CallSettings } from "@/app/lib/prompts/stage1";
-import { ratelimit } from "@/app/lib/ratelimit";
+import { ratelimit, userRatelimit } from "@/app/lib/ratelimit";
 import { db } from "@/app/lib/prismaSingleton";
 
 export async function POST(req: NextRequest) {
@@ -20,8 +20,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // 2. Rate limit anonymous users
-  if (!userId) {
+  // 2. Rate limit: signed-in users by user id (generous per-user daily cap,
+  // D-031), anonymous sessions by IP. Both close the generation cost hole.
+  if (userId) {
+    const { success } = await userRatelimit.limit(userId);
+    if (!success) {
+      return NextResponse.json(
+        { error: "rate_limit", message: "20 analyses per day. Try again tomorrow." },
+        { status: 429 }
+      );
+    }
+  } else {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "unknown";
     const { success } = await ratelimit.limit(ip);
     if (!success) {
