@@ -177,7 +177,7 @@ ones present in the context you received.
  */
 export const stage2CallSettings = {
   /** Claude Sonnet (latest stable), same as Stage 1. */
-  model: "claude-sonnet-4-5",
+  model: "claude-sonnet-4-6",
   /** 8192 for both stages (Stage 1's old 4096 hit `finishReason: "length"`). */
   maxOutputTokens: 8192,
   /** Lower than Stage 1's 0.7 — plans should be more deterministic. */

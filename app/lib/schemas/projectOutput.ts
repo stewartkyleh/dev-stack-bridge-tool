@@ -32,24 +32,23 @@ export const projectOutputSchema = z.object({
       purpose: z.string(),
     })
   ),
+  // Phases/milestones/tasks are emitted as ordered arrays only. Per D-033 the
+  // model carries no `order` (assigned 1-based from array index at persist) and
+  // no `completed` (owned by Prisma's `@default(false)`) — keeping positional and
+  // state fields out of the LLM contract so the `@@unique([parentId, order])`
+  // constraints cannot be violated by a model numbering glitch.
   phases: z.array(
     z.object({
-      order: z.number(),
       name: z.string(),
       weekRange: z.string(),
       goal: z.string(),
       milestones: z.array(
         z.object({
-          order: z.number(),
           title: z.string(),
           tasks: z.array(
             z.object({
-              order: z.number(),
               title: z.string(),
               description: z.string(),
-              // Fresh LLM output: every task starts incomplete. The documented
-              // schema pins this to `false`; the app flips it later (post-Phase 3).
-              completed: z.literal(false),
             })
           ),
         })
