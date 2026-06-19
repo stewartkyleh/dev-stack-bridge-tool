@@ -1,12 +1,16 @@
 import { auth } from "@clerk/nextjs/server";
+import { SignUpButton } from "@clerk/nextjs";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/app/lib/prismaSingleton";
 import {
   transitionOutputSchema,
   type TransitionOutput,
 } from "@/app/lib/schemas/transitionOutput";
+import { planCta, type PlanCta } from "@/app/lib/planCta";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -27,13 +31,26 @@ export default async function TransitionPage({
   const cookieStore = await cookies();
   const anonSessionId = cookieStore.get("anon_session")?.value ?? null;
 
-  const transition = await db.transition.findUnique({ where: { id } });
+  const transition = await db.transition.findUnique({
+    where: { id },
+    include: { project: { select: { id: true } } },
+  });
   if (!transition) notFound();
 
+  // A signed-in owner owns via userId; an anonymous owner via the session cookie.
+  // Both may view the analysis, but only a signed-in owner can plan a Project
+  // (Projects are userId-owned, transitive through the Transition — D-034).
+  const isSignedInOwner = userId !== null && transition.userId === userId;
   const isOwner =
-    (userId !== null && transition.userId === userId) ||
+    isSignedInOwner ||
     (anonSessionId !== null && transition.anonymousSessionId === anonSessionId);
   if (!isOwner) notFound();
+
+  const cta = planCta({
+    transitionId: id,
+    isSignedInOwner,
+    projectExists: transition.project !== null,
+  });
 
   const output = transitionOutputSchema.parse({
     summary: transition.summary,
@@ -51,7 +68,49 @@ export default async function TransitionPage({
       <NewConceptsSection newConcepts={output.newConcepts} />
       <TimelineSection timeline={output.timeline} />
       <ProjectInspirationsSection inspirations={output.projectInspirations} />
+      <PlanCtaSection cta={cta} />
     </main>
+  );
+}
+
+// ─── Stage 2 entry point ──────────────────────────────────────────────────────
+
+// The next step out of the analysis. A signed-in owner gets a link into the plan
+// form (or their existing plan); an anonymous owner gets a contextual sign-up
+// prompt rather than a link that would bounce to sign-in — the account gate as a
+// value moment (issue #15). Copy + placement here had a human design review.
+function PlanCtaSection({ cta }: { cta: PlanCta }) {
+  if (cta.kind === "signup") {
+    return (
+      <section className="rounded-lg border p-6 text-center space-y-3">
+        <h2 className="text-xl font-semibold">Get a step-by-step build plan</h2>
+        <p className="text-sm text-muted-foreground">
+          Sign up to turn this bridge analysis into phases, milestones, and tasks.
+        </p>
+        {/* Once claim-on-sign-up (ADR 0001) is wired, returning here flips this
+            section to the plan link below. */}
+        <SignUpButton>
+          <Button size="lg">Create free account</Button>
+        </SignUpButton>
+      </section>
+    );
+  }
+
+  const existing = cta.kind === "plan-existing";
+  return (
+    <section className="rounded-lg border p-6 text-center space-y-3">
+      <h2 className="text-xl font-semibold">Ready to build?</h2>
+      <p className="text-sm text-muted-foreground">
+        {existing
+          ? "Pick up your project plan where you left off."
+          : "Turn this analysis into a phased project plan."}
+      </p>
+      <Button asChild size="lg">
+        <Link href={cta.href}>
+          {existing ? "View your project plan" : "Plan a project"}
+        </Link>
+      </Button>
+    </section>
   );
 }
 
