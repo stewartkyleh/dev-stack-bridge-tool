@@ -193,7 +193,7 @@ function NewConceptsSection({
       <div>
         <h2 className="text-xl font-semibold">New territory</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Concepts you'll need to learn from scratch.
+          Concepts you&apos;ll need to learn from scratch.
         </p>
       </div>
 

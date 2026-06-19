@@ -45,14 +45,19 @@ export default function NewTransitionPage() {
         localStorage.removeItem(DRAFT_KEY);
       }
     }
+    // Run once on mount to seed the form from any saved draft.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Save draft on every change
   useEffect(() => {
-    const subscription = form.watch((values) => {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+    const unsubscribe = form.subscribe({
+      formState: { values: true },
+      callback: ({ values }) => {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(values));
+      },
     });
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, [form]);
 
   // Clear the draft only once persistence is confirmed (`ready`) — never at
@@ -167,7 +172,7 @@ function Step1({ form }: { form: UseFormReturn<Stage1FormData> }) {
           <Field data-invalid={fieldState.invalid}>
             <FieldLabel>Current skills *</FieldLabel>
             <p className="text-sm text-muted-foreground">
-              Select the tools and languages you've used professionally. Add anything missing from the list.
+              Select the tools and languages you&apos;ve used professionally. Add anything missing from the list.
             </p>
             <div className="space-y-4">
               {Object.entries(CHIP_GROUPS).map(([group, chips]) => (
@@ -331,7 +336,7 @@ function TargetStackPicker({ form }: { form: UseFormReturn<Stage1FormData> }) {
       render={({ fieldState }) => (
         <Field data-invalid={fieldState.invalid}>
           <FieldLabel>
-            Pick the tools you want to learn. We'll fill in the supporting pieces. *{" "}
+            Pick the tools you want to learn. We&apos;ll fill in the supporting pieces. *{" "}
             <span className="font-normal text-muted-foreground">
               Selected: {selected.length} / {STACK_CAP}
             </span>
