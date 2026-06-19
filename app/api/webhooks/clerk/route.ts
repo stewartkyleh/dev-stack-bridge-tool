@@ -39,6 +39,6 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     console.error('Error verifying webhook:', err);
-    return new Response('Webhook error', { status: 400 });
+    return new Response('Invalid webhook signature', { status: 401 });
   }
 }

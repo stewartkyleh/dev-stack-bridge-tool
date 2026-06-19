@@ -102,7 +102,7 @@ export default function NewTransitionPage() {
         ))}
       </div>
 
-      <div className="max-w-2x1 mx-auto px-6 py-12">
+      <div className="max-w-2xl mx-auto px-6 py-12">
         <h1 className="text-xl font-semibold mb-6">{STEPS[step]}</h1>
 
         <form onSubmit={form.handleSubmit(onSubmit)}>
