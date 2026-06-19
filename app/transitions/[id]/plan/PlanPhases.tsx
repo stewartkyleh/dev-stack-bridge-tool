@@ -67,7 +67,7 @@ export function PlanPhases({ phases }: { phases: PlanPhase[] }) {
                     variant="secondary"
                     className="bg-green-100 font-normal text-green-800"
                   >
-                    done
+                    Done
                   </Badge>
                 ) : (
                   <Badge variant="secondary" className="font-normal tabular-nums">
