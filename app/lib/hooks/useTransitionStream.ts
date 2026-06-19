@@ -2,11 +2,7 @@
 
 import { useReducer, useCallback } from "react";
 import { parse } from "partial-json";
-import {
-  streamReducer,
-  initialStreamState,
-  type StreamState,
-} from "@/app/lib/streamState";
+import { streamReducer, initialStreamState } from "@/app/lib/streamState";
 import type { TransitionOutput } from "@/app/lib/schemas/transitionOutput";
 import type { Stage1FormData } from "@/app/lib/schemas/intake";
 
