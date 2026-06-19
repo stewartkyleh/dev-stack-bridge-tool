@@ -118,21 +118,21 @@ Recommended additions to fill the timeline:
 
 ### Milestone 1: Stage 2 form collects project description with Transition context attached
 
-[] 1. Build `/transitions/[id]/plan/new` as a Server Component that reads the saved Transition from Postgres via Prisma. Pass it as a prop to the Client Component form. Data fetching stays on the server.
-[] 2. Build the Stage 2 form: project description textarea and optional specific requirements field. Validate that the description is at least 50 characters before allowing submission.
+[x] 1. Build `/transitions/[id]/plan/new` as a Server Component that reads the saved Transition from Postgres via Prisma. Pass it as a prop to the Client Component form. Data fetching stays on the server.
+[x] 2. Build the Stage 2 form: project description textarea and optional specific requirements field. Validate that the description is at least 50 characters before allowing submission.
 
 ### Milestone 2: AI API call streams a structured project plan and saves it as a Project row
 
-[] 1. Create `POST /api/transitions/[id]/plan/generate`. Fetch the saved Transition from Postgres inside the Route Handler — don't trust the client to send the full context. Verify ownership: `transition.userId` must match the Clerk user ID (or `anonymousSessionId` must match the cookie). Return 404, not 403, on ownership mismatch — never confirm the resource exists to a non-owner.
-[] 2. Write the Stage 2 system prompt with the full Transition context object included. Mark the static portion with `cache_control`. Expect the prompt to be 1500–3000 tokens.
-[] 3. Add a Zod schema for the Stage 2 plan output and validate the AI response.
-[] 4. On stream completion: parse, validate with Zod, then persist the plan as a **single nested transactional `prisma.project.create`** spanning Project → Phase → Milestone → Task (all-or-nothing — a partial write must never land), and return the Project ID. Confirm persistence before redirecting, per D-025.
+[x] 1. Create `POST /api/transitions/[id]/plan/generate`. Fetch the saved Transition from Postgres inside the Route Handler — don't trust the client to send the full context. Verify ownership: `transition.userId` must match the Clerk user ID ~~(or `anonymousSessionId` must match the cookie)~~ — Stage 2 is authenticated-only and userId-keyed throughout; no anonymous path (D-029/D-034). Return 404, not 403, on ownership mismatch — never confirm the resource exists to a non-owner. Also short-circuits with **409 before calling Claude** when a Project already exists (`Project.transitionId` is `@unique`), so a re-POST neither spends tokens nor erodes the daily cap.
+[x] 2. Write the Stage 2 system prompt with the full Transition context object included. Mark the static portion with `cache_control`. Expect the prompt to be 1500–3000 tokens.
+[x] 3. Add a Zod schema for the Stage 2 plan output and validate the AI response.
+[x] 4. On stream completion: parse, validate with Zod, then persist the plan as a **single nested transactional `prisma.project.create`** spanning Project → Phase → Milestone → Task (all-or-nothing — a partial write must never land), and return the Project ID. Confirm persistence before redirecting, per D-025.
 
 ### Milestone 3: Plan renders at `/transitions/[id]/plan` as a navigable, interactive page
 
-[] 1. Render the fit evaluation section: stack coverage, scope verdict, and hiring signal with color-coded badges.
-[] 2. Render phases as an accordion: each phase expands to show milestones, tasks with checkboxes, and learning callouts. Use shadcn Accordion. Checkbox state is local (`useState`) for now — persistence comes in Phase 4.
-[] 3. Render the definition of done section: must-haves as a checklist, stretch goals as a secondary list.
+[x] 1. Render the fit evaluation section: stack coverage, scope verdict, and hiring signal with color-coded badges.
+[x] 2. Render phases as an accordion: each phase expands to show milestones, tasks with checkboxes, and learning callouts. Use shadcn Accordion. Checkbox state is local (`useState`) for now — persistence comes in Phase 4.
+[x] 3. Render the definition of done section: must-haves as a checklist, stretch goals as a secondary list.
 
 ### Learning callouts
 
