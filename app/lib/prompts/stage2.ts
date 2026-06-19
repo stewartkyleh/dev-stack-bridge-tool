@@ -178,8 +178,16 @@ ones present in the context you received.
 export const stage2CallSettings = {
   /** Claude Sonnet (latest stable), same as Stage 1. */
   model: "claude-sonnet-4-6",
-  /** 8192 for both stages (Stage 1's old 4096 hit `finishReason: "length"`). */
-  maxOutputTokens: 8192,
+  /**
+   * 16000 — Stage 2 is the largest output in the app (phases × milestones ×
+   * tasks, each with descriptions; D-033), and 8192 was truncating real plans
+   * with `finishReason: "length"`, which fails the parse and forces a
+   * regenerate. The route streams, so this stays well under Sonnet 4.6's 64K
+   * output ceiling with no HTTP-timeout risk. `max_tokens` is a ceiling, not a
+   * target — this only spends more when a plan would otherwise be cut off.
+   * Stage 1 stays at 8192; its output is smaller.
+   */
+  maxOutputTokens: 16000,
   /** Lower than Stage 1's 0.7 — plans should be more deterministic. */
   temperature: 0.5,
   /** System prompt is identical across calls; cache the static portion. */

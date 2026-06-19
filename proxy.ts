@@ -5,6 +5,9 @@ const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
   '/api/transitions/:id/(.*)',
   '/api/tasks/(.*)',
+  // Both Stage 2 plan pages require auth (a Project is userId-owned, D-034). The
+  // anon-accessible Stage 1 view `/transitions/[id]` stays untouched.
+  '/transitions/:id/plan(.*)',
 ]);
 
 const isAnonEligible = createRouteMatcher([
