@@ -71,4 +71,16 @@ describe("projectIntakeSchema (Stage 2)", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("normalizes an empty-string specificRequirements to undefined", () => {
+    // A cleared optional textarea submits "". Treat it as omitted so the value
+    // the prompt sees and the value we persist agree (the route already drops a
+    // falsy requirement from the prompt; the mapper turns undefined into null).
+    const result = projectIntakeSchema.safeParse({
+      projectDescription: longEnough,
+      specificRequirements: "",
+    });
+    expect(result.success).toBe(true);
+    expect(result.data!.specificRequirements).toBeUndefined();
+  });
 });

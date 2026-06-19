@@ -139,6 +139,20 @@ describe("POST /api/transitions/[id]/plan/generate — guards (no token spend)",
     expect(res.status).toBe(409);
     expect(mockStreamText).not.toHaveBeenCalled();
   });
+
+  it("does not consume a rate-limit slot when a Project already exists", async () => {
+    // Re-POSTing to an already-planned transition is a permanent no-op; it must
+    // not erode the user's daily cap. The 409 guard runs before the limiter.
+    mockAuth.mockResolvedValue({ userId: "user-1" } as never);
+    mockTransitionFind.mockResolvedValue(ownedTransition as never);
+    mockUserLimit.mockResolvedValue(limit(true));
+    mockProjectFind.mockResolvedValue({ id: "p-1" } as never);
+
+    const res = await POST(post(validIntake), { params });
+
+    expect(res.status).toBe(409);
+    expect(mockUserLimit).not.toHaveBeenCalled();
+  });
 });
 
 // A complete Stage 2 output (post-D-033: no order/completed). Two phases to

@@ -61,7 +61,13 @@ export const projectIntakeSchema = z.object({
   projectDescription: z
     .string()
     .min(50, "Describe your project in at least 50 characters"),
-  specificRequirements: z.string().optional(),
+  // A cleared textarea submits ""; normalize it to undefined so "omitted" has a
+  // single representation. Otherwise "" is dropped from the prompt (falsy) yet
+  // persisted verbatim, storing a requirement the model never saw.
+  specificRequirements: z
+    .string()
+    .transform((v) => (v === "" ? undefined : v))
+    .optional(),
 });
 
 export type ProjectIntake = z.infer<typeof projectIntakeSchema>;

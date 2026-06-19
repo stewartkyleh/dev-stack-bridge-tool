@@ -42,17 +42,9 @@ export async function POST(
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  // 2. Per-user daily cap (D-031), keyed by user id.
-  const { success } = await userRatelimit.limit(userId);
-  if (!success) {
-    return NextResponse.json(
-      { error: "rate_limit", message: "20 generations per day. Try again tomorrow." },
-      { status: 429 }
-    );
-  }
-
-  // 3. One Project per Transition (D-034). Block a second plan with 409 *before*
-  // spending tokens on Claude.
+  // 2. One Project per Transition (D-034). Block a second plan with 409 *before*
+  // the rate limiter so a re-POST to an already-planned transition (a permanent
+  // no-op) neither spends tokens nor erodes the user's daily cap.
   const existing = await db.project.findUnique({
     where: { transitionId: id },
     select: { id: true },
@@ -61,6 +53,15 @@ export async function POST(
     return NextResponse.json(
       { error: "conflict", message: "A plan already exists for this transition." },
       { status: 409 }
+    );
+  }
+
+  // 3. Per-user daily cap (D-031), keyed by user id.
+  const { success } = await userRatelimit.limit(userId);
+  if (!success) {
+    return NextResponse.json(
+      { error: "rate_limit", message: "20 generations per day. Try again tomorrow." },
+      { status: 429 }
     );
   }
 
