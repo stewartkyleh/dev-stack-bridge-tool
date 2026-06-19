@@ -10,8 +10,11 @@ This project uses [shadcn/ui](https://ui.shadcn.com/docs/components). Reach for 
 shadcn component by default before hand-rolling markup or inline-styled elements.
 Installed primitives live in `components/ui/`; the full catalog (and install
 commands) is at https://ui.shadcn.com/docs/components. When you need one that
-isn't present yet, add it (matching the local style of the existing
-`components/ui/` files) rather than reinventing it ad hoc.
+isn't present yet, add it with `npx shadcn@latest add <name>` rather than
+hand-authoring or reinventing it ad hoc — the CLI emits the component in this
+repo's configured `radix-nova` style (see `components.json`: correct `data-*`
+variants, unified `radix-ui` import, lucide icons), which matches the existing
+`components/ui/` files.
 
 ## Testing
 
