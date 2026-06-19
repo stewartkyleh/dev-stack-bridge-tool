@@ -412,6 +412,18 @@ Each entry: the decision, alternatives considered, what drove the call, and a ro
 
 ---
 
+## D-035: Raise Stage 2 `maxOutputTokens` to 16000 (Stage 1 stays at 8192)
+
+**Decision**: `stage2CallSettings.maxOutputTokens` goes from 8192 to 16000. Stage 1 is unchanged.
+
+**Alternatives**: Leave at 8192 and shrink the plan (fewer phases/tasks, terser task descriptions); raise all the way to Sonnet 4.6's 64K output ceiling.
+
+**Rationale**: Manual testing hit `finishReason: "length"` on real plans. Stage 2 is the largest output in the app — phases × milestones × tasks, each task carrying a description (the row explosion D-033 already flagged as "pushing against the 8192 cap"). A truncated stream fails the `projectOutputSchema` parse in `onFinish`, so nothing persists and the client drops into the regenerate affordance (D-032) — i.e. the cap silently turned every large plan into a forced regenerate. `max_tokens` is a ceiling, not a target, so raising it costs nothing on normal-size plans and only spends more when a plan would otherwise be cut off. The Stage 2 route streams (`toTextStreamResponse`), so 16000 carries no HTTP-timeout risk and stays well under the 64K ceiling. 16000 (2×) was chosen over 64K because a plan needing more than ~16K of JSON is itself too sprawling to be a good portfolio plan — the cap doubling as a soft sanity bound. Stage 1's output is smaller and has not truncated at 8192, so it stays put.
+
+**Reversal cost**: Trivial. One integer in `stage2.ts`; raise toward 64K if a legitimately large plan ever truncates again.
+
+---
+
 ## How to add new entries
 
 When you make a meaningful build-time decision:
