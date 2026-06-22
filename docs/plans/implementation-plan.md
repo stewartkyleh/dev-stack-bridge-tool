@@ -187,7 +187,7 @@ Recommended additions to fill the timeline:
 
 ### Milestone 3: README written and production deploy verified
 
-[] 1. Write a README covering: what the tool does, the tech stack and why each tool was chosen, the two-stage architecture, and how to run it locally. The "why each tool was chosen" section is what hiring engineers read — write it as if explaining your decisions in an interview. Reference `decisions-log.md` for the reasoning behind Prisma, Clerk, and Neon.
+[x] 1. Write a README covering: what the tool does, the tech stack and why each tool was chosen, the two-stage architecture, and how to run it locally. The "why each tool was chosen" section is what hiring engineers read — write it as if explaining your decisions in an interview. Reference `decisions-log.md` for the reasoning behind Prisma, Clerk, and Neon.
 [] 2. Verify the production Vercel deploy end-to-end: sign in, create a Transition, generate a Project plan, confirm an anonymous Transition is claimable on sign-up. Run the full happy path on production, not localhost.
 [] 3. Record a 2–3 minute Loom walkthrough for job applications. Demo the full flow, mention one architectural decision and why. Keep it under 3 minutes.
 [] 4. Replace the boilerplate `/` with a basic landing page (headline, what it does, "Get started" → `/transitions/new`). Add a value-less `.env.example` listing every required env var. (The sample-plan landing in the stretch list is an upgrade of this.)

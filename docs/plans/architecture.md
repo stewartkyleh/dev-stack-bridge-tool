@@ -98,8 +98,8 @@ GET    /api/transitions/[id]
 DELETE /api/transitions/[id]
 POST   /api/transitions/[id]/plan/generate    Stage 2, streams response
 GET    /api/transitions/[id]/plan
-PATCH  /api/tasks/[id]/toggle                 toggle task completed state
-POST   /api/transitions/[id]/claim            claim anonymous transition on sign-up
+PATCH  /api/tasks/[id]/toggle                 set task completed state (idempotent; body { completed } — D-036)
+GET    /claim                                 claim anonymous transitions on sign-up/in (bulk, by cookie — D-037, ADR 0001)
 POST   /api/webhooks/clerk                    Clerk user lifecycle events
 POST   /api/cron/cleanup-anonymous            daily anon-transition GC
 ```
@@ -129,7 +129,7 @@ The app supports generating a transition before sign-up, then claiming it on acc
 3. Streaming response and redirect work identically to the signed-in flow.
 4. On the transition view, a "Save to your account" banner prompts sign-up.
 5. User signs up via Clerk. Clerk webhook fires `user.created`.
-6. After auth, Clerk redirects to an authenticated claim route (browser-originated, so the `anon_session` cookie is available). It ensures the User row exists, then runs `UPDATE transitions SET userId = <newUserId>, anonymousSessionId = null WHERE anonymousSessionId = <cookie value>` and clears the cookie. This runs on sign-in as well as sign-up. The webhook does **not** perform the claim — a server-to-server request can't see the cookie. Linked `Project` rows need no update (ownership is transitive through the Transition). See ADR 0001.
+6. After auth, Clerk redirects to an authenticated claim route (browser-originated, so the `anon_session` cookie is available). It ensures the User row exists, then runs `UPDATE transitions SET userId = <newUserId>, anonymousSessionId = null WHERE anonymousSessionId = <cookie value>` and clears the cookie. This runs on sign-in as well as sign-up. The webhook does **not** perform the claim — a server-to-server request can't see the cookie. Linked `Project` rows need no update (ownership is transitive through the Transition). The claim route is a GET handler at `/claim` that all sign-in/up flows redirect to globally (a no-op when no cookie is present); it 302s to `/dashboard` by default, or to a validated `redirect_url` so the "Save to your account" banner can return the user to their Transition. See ADR 0001 and D-037.
 7. Anonymous cookie is cleared.
 
 **Cleanup.** A Vercel Cron job runs daily, deleting anonymous transitions (and their projects) older than 30 days. Defined in `vercel.json` with the `crons` field; the cron endpoint validates a `CRON_SECRET` to prevent unauthorized invocation.
@@ -175,7 +175,7 @@ Local development uses `.env.local`, listed in `.gitignore`. Production values l
 `proxy.ts` at the project root runs before every request. Responsibilities, in order:
 
 1. **Anonymous session cookie issuance** for the paths where anonymous use is allowed (`/transitions/new`, `/api/transitions/generate`). Sets the cookie if absent.
-2. **Clerk auth enforcement** via `authMiddleware` — protects everything under `/dashboard`, plus the non-anonymous-eligible API routes (`/api/transitions/[id]/*`, `/api/tasks/*`).
+2. **Clerk auth enforcement** via `authMiddleware` — protects everything under `/dashboard`, the `/claim` route, and the non-anonymous-eligible API routes (`/api/transitions/[id]/*`, `/api/tasks/*`).
 3. **Webhook routes** are explicitly excluded from auth middleware; they verify their own signatures.
 
 ## Error handling
