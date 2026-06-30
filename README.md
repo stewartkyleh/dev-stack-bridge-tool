@@ -10,13 +10,13 @@ the build. Mapping concepts between skill sets is the thing LLMs are genuinely
 good at, so the product is built around that strength and stays out of the way
 of the things they're bad at (inventing personally compelling projects).
 
-## Why this project exists (the hiring narrative)
+## Why this project exists
 
-This is a self-referential portfolio piece: it was built by a developer
-transitioning from C#/Unity into full-stack web and AI engineering — using the
-exact stack and patterns the product recommends. The app's existence is itself
-evidence of competence with the target stack, and every decision below is one
-I can defend in an interview. That framing is intentional, not incidental.
+The product is self-referential: it's built with the same stack and patterns it
+recommends to its users. That constraint was deliberate — it keeps the advice
+honest, since the app has to live with every choice it hands out. The decisions
+below were each made for a reason, and those reasons are documented rather than
+assumed.
 
 ## The two-stage flow
 
@@ -40,14 +40,13 @@ benefit.
 
 ## Tech stack and why each choice
 
-The "why" matters more than the "what" here — these are the decisions a hiring
-engineer would probe.
+The "why" matters more than the "what" here — each one is a deliberate trade-off.
 
 - **Next.js (single app, App Router).** The whole product — UI, Server
   Components, and API Route Handlers — is one Next.js application rather than a
-  separate backend plus an SPA. On a two-week build, splitting across two
-  services doubles the setup, deploy, and context-switching cost for zero
-  functional gain at this scale. The Route Handlers are thin enough to extract
+  separate backend plus an SPA. When the goal is to ship quickly, splitting
+  across two services doubles the setup, deploy, and context-switching cost for
+  zero functional gain at this scale. The Route Handlers are thin enough to extract
   into their own service later if the product ever outgrows this shape.
 
 - **Anthropic Claude.** Sonnet drives the main generations, Haiku the auxiliary
@@ -55,7 +54,7 @@ engineer would probe.
   decision, but Claude won on its reliability at structured-JSON output during
   testing (the whole app depends on parsing the model's JSON against a Zod
   schema). Self-hosting an open model was out of scope — the operational
-  overhead doesn't pay back at portfolio scale.
+  overhead doesn't pay back at this scale.
 
 - **Postgres (Neon).** The core data model is relational by nature
   (User → Transition → Project → Phase → Milestone → Task), so Postgres fit
@@ -65,18 +64,18 @@ engineer would probe.
   serverless connection model suits Vercel.
 
 - **Prisma.** A single schema file generates a fully-typed TypeScript client and
-  first-class migrations. For a project where I'm sharpening TypeScript, the
-  strongest possible type safety at the data boundary was worth more than the
-  SQL transparency of a lighter query builder.
+  first-class migrations. For a TypeScript-heavy codebase, the strongest possible
+  type safety at the data boundary was worth more than the SQL transparency of a
+  lighter query builder.
 
 - **Clerk.** Hosted auth with a polished sign-in UI, OAuth, sessions, password
   reset, and webhooks in ~15 minutes of setup. Authentication isn't this
   product's differentiator — the AI integration is — so spending two to three
   days hand-rolling auth would be effort in the wrong place. The free tier is
-  far beyond any portfolio-scale traffic.
+  far beyond what this project needs.
 
 - **Vercel.** `git push` → live URL with effectively zero configuration, which
-  is the right call when the goal is to actually ship in two weeks. AWS exposure
+  is the right call when the goal is to ship quickly. AWS exposure
   can be added later as a targeted signal (e.g. swapping the LLM call to
   Bedrock) without blocking the MVP.
 
